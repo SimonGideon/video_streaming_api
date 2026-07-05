@@ -10,6 +10,7 @@ public class MinioService
     private readonly string _bucketName;
     private readonly string _endpoint;
     private readonly int _port;
+    private readonly string _publicBaseUrl;
     private readonly ILogger<MinioService> _logger;
 
     public MinioService(IConfiguration config, ILogger<MinioService> logger)
@@ -20,6 +21,10 @@ public class MinioService
         var endpointFull = minio["Endpoint"]!;
         _endpoint = endpointFull.Split(':')[0];
         _port = int.Parse(endpointFull.Split(':')[1]);
+        var publicBase = minio["PublicBaseUrl"];
+        _publicBaseUrl = string.IsNullOrWhiteSpace(publicBase)
+            ? $"http://{_endpoint}:{_port}"
+            : publicBase.TrimEnd('/');
 
         _client = new MinioClient()
             .WithEndpoint(_endpoint, _port)
@@ -127,13 +132,13 @@ public class MinioService
             .WithObjectSize(size)
             .WithContentType(contentType));
 
-        return $"http://{_endpoint}:{_port}/{_bucketName}/{key}";
+        return $"{_publicBaseUrl}/{_bucketName}/{key}";
     }
 
     // ── URL builders ──────────────────────────────────────────────────────────
 
     public string GetHlsUrl(string videoId) =>
-        $"http://{_endpoint}:{_port}/{_bucketName}/videos/{videoId}/hls/master.m3u8";
+        $"{_publicBaseUrl}/{_bucketName}/videos/{videoId}/hls/master.m3u8";
 
     // ── Download ──────────────────────────────────────────────────────────────
 

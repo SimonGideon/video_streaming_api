@@ -1,6 +1,0 @@
-@MarkIasVideoProcessingApi_HostAddress = http://localhost:5213
-
-GET {{MarkIasVideoProcessingApi_HostAddress}}/api/video
-Accept: application/json
-
-###
