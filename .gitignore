@@ -1,0 +1,7 @@
+.env
+bin/
+obj/
+logs/
+*.user
+.idea/
+.DS_Store

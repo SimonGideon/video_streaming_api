@@ -1,0 +1,60 @@
+services:
+  api:
+    build: .
+    container_name: video-streaming-api
+    ports:
+      - "${API_PORT:-8080}:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__Default=Host=postgres;Port=5432;Database=video_streaming;Username=postgres;Password=${POSTGRES_PASSWORD:-postgres}
+      - MinIO__Endpoint=${MINIO_ENDPOINT:-minio:9000}
+      - MinIO__AccessKey=${MINIO_ACCESS_KEY:-minioadmin}
+      - MinIO__SecretKey=${MINIO_SECRET_KEY:-minioadmin}
+      - MinIO__BucketName=${MINIO_BUCKET_NAME:-mark-ias-videos}
+      - Cors__AllowedOrigins=${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      - VideoProcessing__TempPath=/tmp/video-processing
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: video-streaming-postgres
+    environment:
+      POSTGRES_DB: video_streaming
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio
+    container_name: video-streaming-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  minio_data:
