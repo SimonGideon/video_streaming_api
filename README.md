@@ -40,3 +40,7 @@ docker run -p 8080:8080 --env-file .env video-streaming-api
 ```
 
 PostgreSQL and MinIO must be reachable from the container (see `.env.example`).
+
+## Configuration
+
+Copy `.env.example` to `.env` locally — **never commit `.env`**. The API reads credentials from environment variables only; `appsettings.json` contains no secrets.

@@ -1,7 +1,20 @@
+# Secrets and local artifacts
 .env
+.env.*
+!.env.example
+*.user
+*.pfx
+*.pem
+*.key
+
+# Build output
 bin/
 obj/
+
+# Logs (may contain filenames, paths, timing)
 logs/
-*.user
+
+# IDE / OS
 .idea/
+.vscode/
 .DS_Store
