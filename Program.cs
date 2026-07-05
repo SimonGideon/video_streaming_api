@@ -71,7 +71,7 @@ try
 
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddApiSwagger();
+    builder.Services.AddApiSwagger(builder.Configuration);
     builder.Services.AddSingleton<MinioService>();
     builder.Services.AddSingleton<FfmpegService>();
 
