@@ -99,7 +99,7 @@ public class VideoController : ControllerBase
         return Ok(videos.Select(ToResponse));
     }
 
-    /// <summary>Maximum upload size enforced by the API (bytes).</summary>
+    /// <summary>Configured maximum video upload size (see also the Upload limits section in Swagger).</summary>
     [HttpGet("upload-limits")]
     [ProducesResponseType(typeof(UploadLimitsResponse), StatusCodes.Status200OK)]
     public ActionResult<UploadLimitsResponse> GetUploadLimits() =>
@@ -135,8 +135,12 @@ public class VideoController : ControllerBase
         });
     }
 
-    /// <summary>Upload a video in one request (for testing; production uses TUS at /api/files).</summary>
+    /// <summary>
+    /// Upload a video in one request (testing only; production uses TUS at /api/files).
+    /// Maximum size is configured in VideoProcessing:MaxUploadSizeGb — see GET upload-limits or Swagger Upload limits.
+    /// </summary>
     [HttpPost("upload")]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(VideoResponse), StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status413PayloadTooLarge)]
