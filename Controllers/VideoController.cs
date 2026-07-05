@@ -103,7 +103,7 @@ public class VideoController : ControllerBase
     [HttpGet("upload-limits")]
     [ProducesResponseType(typeof(UploadLimitsResponse), StatusCodes.Status200OK)]
     public ActionResult<UploadLimitsResponse> GetUploadLimits() =>
-        Ok(new UploadLimitsResponse(_videoProcessing.MaxUploadSizeBytes));
+        Ok(new UploadLimitsResponse(_videoProcessing.MaxUploadSizeGb, _videoProcessing.MaxUploadSizeBytes));
 
     /// <summary>Get video metadata by id.</summary>
     [HttpGet("{id}")]
@@ -149,7 +149,7 @@ public class VideoController : ControllerBase
 
         if (videoFile.Length > _videoProcessing.MaxUploadSizeBytes)
             return StatusCode(StatusCodes.Status413PayloadTooLarge,
-                $"Video exceeds the maximum upload size of {_videoProcessing.MaxUploadSizeBytes} bytes.");
+                $"Video exceeds the maximum upload size of {_videoProcessing.MaxUploadSizeGb} GB.");
 
         if (!videoFile.ContentType.StartsWith("video/"))
             return BadRequest("File must be a video");

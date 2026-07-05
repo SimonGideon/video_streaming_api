@@ -56,9 +56,11 @@ try
     builder.Services.Configure<VideoProcessingOptions>(
         builder.Configuration.GetSection(VideoProcessingOptions.SectionName));
 
-    var maxUploadSizeBytes = builder.Configuration.GetValue(
-        $"{VideoProcessingOptions.SectionName}:MaxUploadSizeBytes",
-        new VideoProcessingOptions().MaxUploadSizeBytes);
+    var videoProcessing = builder.Configuration
+        .GetSection(VideoProcessingOptions.SectionName)
+        .Get<VideoProcessingOptions>() ?? new VideoProcessingOptions();
+
+    var maxUploadSizeBytes = videoProcessing.MaxUploadSizeBytes;
 
     builder.WebHost.ConfigureKestrel(options =>
         options.Limits.MaxRequestBodySize = maxUploadSizeBytes);
