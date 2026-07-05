@@ -127,8 +127,8 @@ public class VideoController : ControllerBase
         {
             video.Id,
             Status = video.Status.ToString(),
-            video.HlsUrl,
-            video.ThumbnailUrl,
+            HlsUrl = string.IsNullOrEmpty(video.HlsUrl) ? null : _minio.GetHlsUrl(video.Id),
+            ThumbnailUrl = _minio.GetPublicThumbnailUrl(video.Id, video.ThumbnailUrl),
             video.ErrorMessage,
             video.TranscodeMs,
             video.HlsUploadMs,
@@ -291,9 +291,12 @@ public class VideoController : ControllerBase
         }
     }
 
-    private static VideoResponse ToResponse(Video v) => new(
-        v.Id, v.Title, v.HlsUrl, v.Status.ToString(),
-        v.CreatedAt, v.ProcessedAt, v.ThumbnailUrl,
+    private VideoResponse ToResponse(Video v) => new(
+        v.Id, v.Title,
+        string.IsNullOrEmpty(v.HlsUrl) ? null : _minio.GetHlsUrl(v.Id),
+        v.Status.ToString(),
+        v.CreatedAt, v.ProcessedAt,
+        _minio.GetPublicThumbnailUrl(v.Id, v.ThumbnailUrl),
         v.UploadToMinioMs, v.TranscodeMs, v.HlsUploadMs, v.ErrorMessage);
 
     private void TryDelete(string path, VideoJobLogger jobLog)

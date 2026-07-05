@@ -132,13 +132,51 @@ public class MinioService
             .WithObjectSize(size)
             .WithContentType(contentType));
 
-        return $"{_publicBaseUrl}/{_bucketName}/{key}";
+        return $"{_publicBaseUrl}/api/media/videos/{videoId}/thumbnail.{ext}";
     }
 
     // ── URL builders ──────────────────────────────────────────────────────────
 
+    /// <summary>Browser-facing HLS URL (proxied via /api/media, not direct MinIO).</summary>
     public string GetHlsUrl(string videoId) =>
-        $"{_publicBaseUrl}/{_bucketName}/videos/{videoId}/hls/master.m3u8";
+        $"{_publicBaseUrl}/api/media/videos/{videoId}/hls/master.m3u8";
+
+    public string? GetPublicThumbnailUrl(string videoId, string? existingUrl)
+    {
+        if (string.IsNullOrWhiteSpace(existingUrl))
+            return null;
+
+        var ext = existingUrl.Contains(".png", StringComparison.OrdinalIgnoreCase) ? "png"
+            : existingUrl.Contains(".webp", StringComparison.OrdinalIgnoreCase) ? "webp"
+            : "jpg";
+
+        return $"{_publicBaseUrl}/api/media/videos/{videoId}/thumbnail.{ext}";
+    }
+
+    public static string GetContentType(string objectKey) =>
+        Path.GetExtension(objectKey).ToLowerInvariant() switch
+        {
+            ".m3u8" => "application/vnd.apple.mpegurl",
+            ".ts"   => "video/MP2T",
+            ".png"  => "image/png",
+            ".webp" => "image/webp",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            _       => "application/octet-stream",
+        };
+
+    public async Task CopyObjectToAsync(
+        string objectKey,
+        Stream destination,
+        CancellationToken cancellationToken = default)
+    {
+        await _client.GetObjectAsync(new GetObjectArgs()
+            .WithBucket(_bucketName)
+            .WithObject(objectKey)
+            .WithCallbackStream(async (stream, ct) =>
+            {
+                await stream.CopyToAsync(destination, ct);
+            }), cancellationToken);
+    }
 
     // ── Download ──────────────────────────────────────────────────────────────
 

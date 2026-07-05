@@ -202,6 +202,7 @@ try
     });
 
     Log.Information("Video Streaming API starting on {Env}", app.Environment.EnvironmentName);
+    app.LogStartupUrls();
     app.Run();
 }
 catch (Exception ex)
