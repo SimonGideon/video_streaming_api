@@ -3,12 +3,12 @@ using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using MarkIasVideoProcessingApi.Data;
-using MarkIasVideoProcessingApi.Services;
-using MarkIasVideoProcessingApi.Models;
-using MarkIasVideoProcessingApi.DTOs;
+using VideoStreamingApi.Data;
+using VideoStreamingApi.Services;
+using VideoStreamingApi.Models;
+using VideoStreamingApi.DTOs;
 
-namespace MarkIasVideoProcessingApi.Controllers;
+namespace VideoStreamingApi.Controllers;
 
 /// <summary>Video upload, processing status, and playback metadata.</summary>
 [ApiController]
@@ -19,7 +19,7 @@ public class VideoController : ControllerBase
     private readonly MinioService _minio;
     private readonly FfmpegService _ffmpeg;
     private readonly ILogger<VideoController> _logger;
-    private readonly MarkIasVideoProcessingDbContext _db;
+    private readonly VideoStreamingDbContext _db;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ConcurrentDictionary<string, int> _progressStore;
     private readonly string _tempPath;
@@ -32,7 +32,7 @@ public class VideoController : ControllerBase
         FfmpegService ffmpeg,
         ILogger<VideoController> logger,
         IConfiguration config,
-        MarkIasVideoProcessingDbContext db,
+        VideoStreamingDbContext db,
         IServiceScopeFactory scopeFactory,
         ConcurrentDictionary<string, int> progressStore)
     {
@@ -200,7 +200,7 @@ public class VideoController : ControllerBase
         using (jobLog)
         {
             using var scope = _scopeFactory.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<MarkIasVideoProcessingDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<VideoStreamingDbContext>();
             var video = await db.Videos.FindAsync(videoId);
 
             try

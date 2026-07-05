@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 
-namespace MarkIasVideoProcessingApi.Services;
+namespace VideoStreamingApi.Services;
 
 public sealed class VideoJobLogger : IDisposable
 {

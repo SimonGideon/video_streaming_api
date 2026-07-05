@@ -4,8 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>MarkIasVideoProcessingApi</AssemblyName>
-    <RootNamespace>MarkIasVideoProcessingApi</RootNamespace>
+    <AssemblyName>VideoStreamingApi</AssemblyName>
+    <RootNamespace>VideoStreamingApi</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
   </PropertyGroup>

@@ -2,11 +2,11 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
-using MarkIasVideoProcessingApi.Data;
-using MarkIasVideoProcessingApi.Models;
-using MarkIasVideoProcessingApi.Services;
+using VideoStreamingApi.Data;
+using VideoStreamingApi.Models;
+using VideoStreamingApi.Services;
 
-namespace MarkIasVideoProcessingApi.Jobs;
+namespace VideoStreamingApi.Jobs;
 
 /// <summary>
 /// Hangfire background job that transcodes a video to HLS and uploads the
@@ -42,7 +42,7 @@ public class TranscodeJob
     public async Task ExecuteAsync(string videoId, CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<MarkIasVideoProcessingDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<VideoStreamingDbContext>();
 
         var video = await db.Videos.FindAsync([videoId], cancellationToken);
         if (video == null)

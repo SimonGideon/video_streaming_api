@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace MarkIasVideoProcessingApi.Services;
+namespace VideoStreamingApi.Services;
 
 public class FfmpegService
 {

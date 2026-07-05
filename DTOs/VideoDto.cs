@@ -1,4 +1,4 @@
-namespace MarkIasVideoProcessingApi.DTOs;
+namespace VideoStreamingApi.DTOs;
 
 public record UploadVideoRequest(string Title);
 

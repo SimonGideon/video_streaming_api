@@ -7,11 +7,11 @@ using tusdotnet;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
 using tusdotnet.Stores;
-using MarkIasVideoProcessingApi.Data;
-using MarkIasVideoProcessingApi.Extensions;
-using MarkIasVideoProcessingApi.Jobs;
-using MarkIasVideoProcessingApi.Models;
-using MarkIasVideoProcessingApi.Services;
+using VideoStreamingApi.Data;
+using VideoStreamingApi.Extensions;
+using VideoStreamingApi.Jobs;
+using VideoStreamingApi.Models;
+using VideoStreamingApi.Services;
 
 LoadDotEnv();
 
@@ -40,7 +40,7 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("System.Net.Http",               LogEventLevel.Warning)
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
     .WriteTo.File(
-        "logs/mark-ias-video-processing-api.log",
+        "logs/video-streaming-api.log",
         rollingInterval: RollingInterval.Day,
         outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
@@ -53,7 +53,7 @@ try
     builder.Host.UseSerilog();
 
     // Services
-    builder.Services.AddDbContext<MarkIasVideoProcessingDbContext>(options =>
+    builder.Services.AddDbContext<VideoStreamingDbContext>(options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
     builder.Services.AddControllers();
@@ -73,7 +73,7 @@ try
     // CORS — allow Next.js frontend
     builder.Services.AddCors(options =>
     {
-        options.AddPolicy("MarkIasVideoProcessingPolicy", policy =>
+        options.AddPolicy("VideoStreamingCorsPolicy", policy =>
         {
             var origins = builder.Configuration["Cors:AllowedOrigins"]!
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -107,7 +107,7 @@ try
 
     using (var scope = app.Services.CreateScope())
     {
-        var db = scope.ServiceProvider.GetRequiredService<MarkIasVideoProcessingDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<VideoStreamingDbContext>();
         await db.Database.EnsureCreatedAsync();
 
         var minio = scope.ServiceProvider.GetRequiredService<MinioService>();
@@ -119,7 +119,7 @@ try
     if (app.Environment.IsDevelopment())
         app.UseHangfireDashboard("/hangfire");
 
-    app.UseCors("MarkIasVideoProcessingPolicy");
+    app.UseCors("VideoStreamingCorsPolicy");
     app.UseAuthorization();
     app.MapControllers();
 
@@ -148,7 +148,7 @@ try
                     fileName = file.Id;
 
                 using var scope = eventContext.HttpContext.RequestServices.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<MarkIasVideoProcessingDbContext>();
+                var db = scope.ServiceProvider.GetRequiredService<VideoStreamingDbContext>();
                 var minio = scope.ServiceProvider.GetRequiredService<MinioService>();
 
                 var video = new Video

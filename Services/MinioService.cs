@@ -2,7 +2,7 @@ using System.Diagnostics;
 using Minio;
 using Minio.DataModel.Args;
 
-namespace MarkIasVideoProcessingApi.Services;
+namespace VideoStreamingApi.Services;
 
 public class MinioService
 {

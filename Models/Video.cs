@@ -1,4 +1,4 @@
-namespace MarkIasVideoProcessingApi.Models;
+namespace VideoStreamingApi.Models;
 
 public class Video
 {

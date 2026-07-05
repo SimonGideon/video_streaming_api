@@ -1,7 +1,7 @@
 using System.Reflection;
 using Microsoft.OpenApi;
 
-namespace MarkIasVideoProcessingApi.Extensions;
+namespace VideoStreamingApi.Extensions;
 
 public static class SwaggerExtensions
 {
