@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using VideoStreamingApi.Configuration;
 using VideoStreamingApi.Data;
 using VideoStreamingApi.Services;
 using VideoStreamingApi.Models;
@@ -22,6 +24,7 @@ public class VideoController : ControllerBase
     private readonly VideoStreamingDbContext _db;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ConcurrentDictionary<string, int> _progressStore;
+    private readonly VideoProcessingOptions _videoProcessing;
     private readonly string _tempPath;
     private readonly string _logsPath;
 
@@ -31,7 +34,7 @@ public class VideoController : ControllerBase
         MinioService minio,
         FfmpegService ffmpeg,
         ILogger<VideoController> logger,
-        IConfiguration config,
+        IOptions<VideoProcessingOptions> videoProcessing,
         VideoStreamingDbContext db,
         IServiceScopeFactory scopeFactory,
         ConcurrentDictionary<string, int> progressStore)
@@ -39,7 +42,8 @@ public class VideoController : ControllerBase
         _minio = minio;
         _ffmpeg = ffmpeg;
         _logger = logger;
-        _tempPath = config["VideoProcessing:TempPath"]!;
+        _videoProcessing = videoProcessing.Value;
+        _tempPath = _videoProcessing.TempPath;
         _logsPath = "logs/jobs";
         _db = db;
         _scopeFactory = scopeFactory;
@@ -95,6 +99,12 @@ public class VideoController : ControllerBase
         return Ok(videos.Select(ToResponse));
     }
 
+    /// <summary>Maximum upload size enforced by the API (bytes).</summary>
+    [HttpGet("upload-limits")]
+    [ProducesResponseType(typeof(UploadLimitsResponse), StatusCodes.Status200OK)]
+    public ActionResult<UploadLimitsResponse> GetUploadLimits() =>
+        Ok(new UploadLimitsResponse(_videoProcessing.MaxUploadSizeBytes));
+
     /// <summary>Get video metadata by id.</summary>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(VideoResponse), StatusCodes.Status200OK)]
@@ -127,15 +137,19 @@ public class VideoController : ControllerBase
 
     /// <summary>Upload a video in one request (for testing; production uses TUS at /api/files).</summary>
     [HttpPost("upload")]
-    [RequestSizeLimit(4_294_967_295)]
     [ProducesResponseType(typeof(VideoResponse), StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status413PayloadTooLarge)]
     public async Task<IActionResult> Upload(
         IFormFile videoFile,
         [FromForm] string title)
     {
         if (videoFile == null || videoFile.Length == 0)
             return BadRequest("No file provided");
+
+        if (videoFile.Length > _videoProcessing.MaxUploadSizeBytes)
+            return StatusCode(StatusCodes.Status413PayloadTooLarge,
+                $"Video exceeds the maximum upload size of {_videoProcessing.MaxUploadSizeBytes} bytes.");
 
         if (!videoFile.ContentType.StartsWith("video/"))
             return BadRequest("File must be a video");

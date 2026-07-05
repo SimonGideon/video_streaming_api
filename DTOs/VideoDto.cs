@@ -2,6 +2,8 @@ namespace VideoStreamingApi.DTOs;
 
 public record UploadVideoRequest(string Title);
 
+public record UploadLimitsResponse(long MaxUploadSizeBytes);
+
 public record VideoResponse(
     string Id,
     string Title,

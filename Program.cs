@@ -7,6 +7,7 @@ using tusdotnet;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
 using tusdotnet.Stores;
+using VideoStreamingApi.Configuration;
 using VideoStreamingApi.Data;
 using VideoStreamingApi.Extensions;
 using VideoStreamingApi.Jobs;
@@ -51,6 +52,16 @@ try
 
     // Serilog
     builder.Host.UseSerilog();
+
+    builder.Services.Configure<VideoProcessingOptions>(
+        builder.Configuration.GetSection(VideoProcessingOptions.SectionName));
+
+    var maxUploadSizeBytes = builder.Configuration.GetValue(
+        $"{VideoProcessingOptions.SectionName}:MaxUploadSizeBytes",
+        new VideoProcessingOptions().MaxUploadSizeBytes);
+
+    builder.WebHost.ConfigureKestrel(options =>
+        options.Limits.MaxRequestBodySize = maxUploadSizeBytes);
 
     // Services
     builder.Services.AddDbContext<VideoStreamingDbContext>(options =>
@@ -97,11 +108,9 @@ try
         });
     });
 
-    // Increase upload size limit
+    // Multipart upload limit (aligned with Kestrel and TUS)
     builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
-    {
-        options.MultipartBodyLengthLimit = 4_294_967_295;
-    });
+        options.MultipartBodyLengthLimit = maxUploadSizeBytes);
 
     var app = builder.Build();
 
@@ -124,67 +133,73 @@ try
     app.MapControllers();
 
     // TUS resumable upload endpoint — browser uploads chunks here via tus-js-client
-    var tempPath = builder.Configuration["VideoProcessing:TempPath"]!;
+    var tempPath = app.Configuration[$"{VideoProcessingOptions.SectionName}:TempPath"]
+        ?? new VideoProcessingOptions().TempPath;
     Directory.CreateDirectory(tempPath);
     var tusStore = new TusDiskStore(tempPath);
 
-    app.MapTus("/api/files", httpContext => Task.FromResult(new DefaultTusConfiguration
+    app.MapTus("/api/files", httpContext =>
     {
-        Store = tusStore,
-        MaxAllowedUploadSizeInBytesLong = 4_294_967_295, // 4 GB
-        Events = new Events
+        var limits = httpContext.RequestServices
+            .GetRequiredService<Microsoft.Extensions.Options.IOptions<VideoProcessingOptions>>().Value;
+
+        return Task.FromResult(new DefaultTusConfiguration
         {
-            OnFileCompleteAsync = async eventContext =>
+            Store = tusStore,
+            MaxAllowedUploadSizeInBytesLong = limits.MaxUploadSizeBytes,
+            Events = new Events
             {
-                var file = await eventContext.GetFileAsync();
-                var metadata = await file.GetMetadataAsync(eventContext.CancellationToken);
-
-                string Meta(string key) =>
-                    metadata.TryGetValue(key, out var v) ? v.GetString(System.Text.Encoding.UTF8) : "";
-
-                var title = Meta("title");
-                var fileName = Meta("filename");
-                if (string.IsNullOrEmpty(fileName))
-                    fileName = file.Id;
-
-                using var scope = eventContext.HttpContext.RequestServices.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<VideoStreamingDbContext>();
-                var minio = scope.ServiceProvider.GetRequiredService<MinioService>();
-
-                var video = new Video
+                OnFileCompleteAsync = async eventContext =>
                 {
-                    Id = file.Id, // re-use the TUS file id so the client can derive the video id from the upload URL
-                    Title = title,
-                    FileName = fileName,
-                    Status = VideoStatus.Pending
-                };
+                    var file = await eventContext.GetFileAsync();
+                    var metadata = await file.GetMetadataAsync(eventContext.CancellationToken);
 
-                var jobLog = new VideoJobLogger("logs/jobs", video.Id);
-                using (jobLog)
-                {
-                    jobLog.Section($"TUS upload complete — {video.Id}");
-                    jobLog.Info($"Title: {title}  File: {fileName}");
+                    string Meta(string key) =>
+                        metadata.TryGetValue(key, out var v) ? v.GetString(System.Text.Encoding.UTF8) : "";
 
-                    await using (var content = await file.GetContentAsync(eventContext.CancellationToken))
+                    var title = Meta("title");
+                    var fileName = Meta("filename");
+                    if (string.IsNullOrEmpty(fileName))
+                        fileName = file.Id;
+
+                    using var scope = eventContext.HttpContext.RequestServices.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<VideoStreamingDbContext>();
+                    var minio = scope.ServiceProvider.GetRequiredService<MinioService>();
+
+                    var video = new Video
                     {
-                        video.FileSizeBytes = content.Length;
-                        video.OriginalKey = await minio.UploadVideoAsync(content, video.Id, fileName, jobLog);
+                        Id = file.Id,
+                        Title = title,
+                        FileName = fileName,
+                        Status = VideoStatus.Pending
+                    };
+
+                    var jobLog = new VideoJobLogger("logs/jobs", video.Id);
+                    using (jobLog)
+                    {
+                        jobLog.Section($"TUS upload complete — {video.Id}");
+                        jobLog.Info($"Title: {title}  File: {fileName}");
+
+                        await using (var content = await file.GetContentAsync(eventContext.CancellationToken))
+                        {
+                            video.FileSizeBytes = content.Length;
+                            video.OriginalKey = await minio.UploadVideoAsync(content, video.Id, fileName, jobLog);
+                        }
+
+                        db.Videos.Add(video);
+                        await db.SaveChangesAsync(eventContext.CancellationToken);
+
+                        BackgroundJob.Enqueue<TranscodeJob>(j => j.ExecuteAsync(video.Id, CancellationToken.None));
+                        jobLog.Info($"Enqueued TranscodeJob for video {video.Id}");
                     }
 
-                    db.Videos.Add(video);
-                    await db.SaveChangesAsync(eventContext.CancellationToken);
-
-                    BackgroundJob.Enqueue<TranscodeJob>(j => j.ExecuteAsync(video.Id, CancellationToken.None));
-                    jobLog.Info($"Enqueued TranscodeJob for video {video.Id}");
+                    await tusStore.DeleteFileAsync(file.Id, eventContext.CancellationToken);
                 }
-
-                // Delete the completed TUS file from local disk — it now lives in MinIO
-                await tusStore.DeleteFileAsync(file.Id, eventContext.CancellationToken);
             }
-        }
-    }));
+        });
+    });
 
-    Log.Information("Mark IAS Video Processing API starting on {Env}", app.Environment.EnvironmentName);
+    Log.Information("Video Streaming API starting on {Env}", app.Environment.EnvironmentName);
     app.Run();
 }
 catch (Exception ex)

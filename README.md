@@ -23,6 +23,7 @@ ASP.NET Core service for course-style video uploads: resumable TUS ingest, FFmpe
 | GET | `/api/video/{id}` | Video metadata |
 | GET | `/api/video/{id}/status` | Processing status |
 | GET | `/api/video/{id}/progress` | SSE transcode progress |
+| GET | `/api/video/upload-limits` | Maximum upload size (bytes) |
 | POST | `/api/video/upload` | Single-shot upload (testing) |
 | POST | `/api/files` | TUS resumable upload |
 
@@ -45,3 +46,5 @@ PostgreSQL and MinIO must be reachable from the container (see `.env.example`).
 ## Configuration
 
 Copy `.env.example` to `.env` locally — **never commit `.env`**. Credentials are read from environment variables only; `appsettings.json` contains no secrets.
+
+Upload size is configured via `VideoProcessing:MaxUploadSizeBytes` in `appsettings.json` (override with `VideoProcessing__MaxUploadSizeBytes` in the environment). Default: 4 GiB.
