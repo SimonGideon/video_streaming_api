@@ -10,8 +10,10 @@ using MarkIasVideoProcessingApi.DTOs;
 
 namespace MarkIasVideoProcessingApi.Controllers;
 
+/// <summary>Video upload, processing status, and playback metadata.</summary>
 [ApiController]
 [Route("api/[controller]")]
+[Produces("application/json")]
 public class VideoController : ControllerBase
 {
     private readonly MinioService _minio;
@@ -44,8 +46,9 @@ public class VideoController : ControllerBase
         _progressStore = progressStore;
     }
 
-    // GET /api/video/{id}/progress  — SSE stream of transcode progress
+    /// <summary>Stream transcode progress as Server-Sent Events.</summary>
     [HttpGet("{id}/progress")]
+    [Produces("text/event-stream")]
     public async Task StreamProgress(string id, CancellationToken cancellationToken)
     {
         Response.Headers.ContentType = "text/event-stream";
@@ -83,24 +86,29 @@ public class VideoController : ControllerBase
         }
     }
 
-    // GET /api/video
+    /// <summary>List all videos, newest first.</summary>
     [HttpGet]
+    [ProducesResponseType(typeof(IEnumerable<VideoResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll()
     {
         var videos = await _db.Videos.OrderByDescending(v => v.CreatedAt).ToListAsync();
         return Ok(videos.Select(ToResponse));
     }
 
-    // GET /api/video/{id}
+    /// <summary>Get video metadata by id.</summary>
     [HttpGet("{id}")]
+    [ProducesResponseType(typeof(VideoResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id)
     {
         var video = await _db.Videos.FindAsync(id);
         return video == null ? NotFound() : Ok(ToResponse(video));
     }
 
-    // GET /api/video/{id}/status
+    /// <summary>Get processing status and playback URLs.</summary>
     [HttpGet("{id}/status")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetStatus(string id)
     {
         var video = await _db.Videos.FindAsync(id);
@@ -117,9 +125,11 @@ public class VideoController : ControllerBase
         });
     }
 
-    // POST /api/video/upload  — legacy single-shot upload (kept for Swagger testing)
+    /// <summary>Upload a video in one request (for testing; production uses TUS at /api/files).</summary>
     [HttpPost("upload")]
     [RequestSizeLimit(4_294_967_295)]
+    [ProducesResponseType(typeof(VideoResponse), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Upload(
         IFormFile videoFile,
         [FromForm] string title)
@@ -165,8 +175,10 @@ public class VideoController : ControllerBase
         return Accepted(ToResponse(video));
     }
 
-    // GET /api/video/presigned-upload?fileName=
+    /// <summary>Get a pre-signed MinIO PUT URL for direct browser upload.</summary>
     [HttpGet("presigned-upload")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetPresignedUploadUrl([FromQuery] string fileName)
     {
         if (string.IsNullOrWhiteSpace(fileName))

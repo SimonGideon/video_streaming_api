@@ -2,6 +2,8 @@
 
 ASP.NET Core service for course-style video uploads: resumable TUS ingest, FFmpeg HLS transcoding, and MinIO object storage.
 
+**Interactive docs:** `/swagger`
+
 ## Stack
 
 | Layer | Tech |
@@ -13,7 +15,7 @@ ASP.NET Core service for course-style video uploads: resumable TUS ingest, FFmpe
 | Transcode | FFmpeg (adaptive HLS) |
 | Storage | MinIO |
 
-## API
+## Endpoints
 
 | Method | Path | Purpose |
 |--------|------|---------|
@@ -21,15 +23,14 @@ ASP.NET Core service for course-style video uploads: resumable TUS ingest, FFmpe
 | GET | `/api/video/{id}` | Video metadata |
 | GET | `/api/video/{id}/status` | Processing status |
 | GET | `/api/video/{id}/progress` | SSE transcode progress |
+| POST | `/api/video/upload` | Single-shot upload (testing) |
 | POST | `/api/files` | TUS resumable upload |
-
-Swagger UI is available in Development at `/swagger`.
 
 ## Run locally
 
 ```bash
 cp .env.example .env   # set PostgreSQL + MinIO
-dotnet run             # http://localhost:5213
+dotnet run             # http://localhost:5213/swagger
 ```
 
 ## Docker
@@ -43,4 +44,4 @@ PostgreSQL and MinIO must be reachable from the container (see `.env.example`).
 
 ## Configuration
 
-Copy `.env.example` to `.env` locally — **never commit `.env`**. The API reads credentials from environment variables only; `appsettings.json` contains no secrets.
+Copy `.env.example` to `.env` locally — **never commit `.env`**. Credentials are read from environment variables only; `appsettings.json` contains no secrets.

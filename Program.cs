@@ -8,6 +8,7 @@ using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
 using tusdotnet.Stores;
 using MarkIasVideoProcessingApi.Data;
+using MarkIasVideoProcessingApi.Extensions;
 using MarkIasVideoProcessingApi.Jobs;
 using MarkIasVideoProcessingApi.Models;
 using MarkIasVideoProcessingApi.Services;
@@ -57,7 +58,7 @@ try
 
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen();
+    builder.Services.AddApiSwagger();
     builder.Services.AddSingleton<MinioService>();
     builder.Services.AddSingleton<FfmpegService>();
 
@@ -113,12 +114,10 @@ try
         await minio.EnsureBucketExistsAsync();
     }
 
+    app.UseApiSwagger();
+
     if (app.Environment.IsDevelopment())
-    {
-        app.UseSwagger();
-        app.UseSwaggerUI();
         app.UseHangfireDashboard("/hangfire");
-    }
 
     app.UseCors("MarkIasVideoProcessingPolicy");
     app.UseAuthorization();
